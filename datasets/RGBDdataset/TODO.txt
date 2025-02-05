@@ -1,0 +1,8 @@
+- Create a bunch of images with 4 channels (RGBA is used commonly so we do that) from given footage of yellow lid
+ - This can be done using RGBDcombinator.py (hopefully)
+
+- Create training and validation data with labels -> label data using CVAT
+ - https://docs.cvat.ai/docs/manual/basics/create_an_annotation_task/#:~:text=On%20the%20Constructor%20tab%2C%20click%20Add%20label.&text=In%20the%20Label%20name%20field,the%20color%20for%20the%20label.
+
+- Format dataset similar to coco8 (don't forget yaml with info about which object is which)
+ - https://medium.com/@estebanuri/training-yolov11-object-detector-on-a-custom-dataset-39bba09530ff
