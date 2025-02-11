@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 from PIL import Image, ImageOps
 import numpy as np
 import os
-import uuid
 
 # Load all images in the combinator/input directory -- even is rgb, odd is depth 
 input_dir = "combinator/input"
