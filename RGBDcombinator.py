@@ -3,15 +3,15 @@ from PIL import Image, ImageOps
 import numpy as np
 import os
 
-# Load all images in the combinator/input directory -- even is rgb, odd is depth 
+# Load all images from the combinator/input directory -- even is rgb, odd is depth, a pair is (even, even+1)
 input_dir = "combinator/input"
 images = [Image.open(os.path.join(input_dir, file)) for file in os.listdir(input_dir) if file.endswith(('.png', '.jpg', '.jpeg'))]
 
 # Assuming you want to process the first image in the list
-rgb_image = images[1].convert("RGB")
+rgb_image = images[0].convert("RGB")
 
 # Load the depth map (assuming it's a grayscale image)
-depth_map = images[0].convert("L")
+depth_map = images[1].convert("L")
 
 # Invert the depth map - closer values are darker
 depth_map = ImageOps.invert(depth_map)

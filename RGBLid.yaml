@@ -1,0 +1,6 @@
+train: ../RGBLid/images/train
+val: ../RGBLid/images/val
+
+nc: 3
+
+names: ['Lid', 'Gate', 'Eryk']
