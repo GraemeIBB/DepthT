@@ -1,6 +1,7 @@
 train: ../RGBLid/images/train
 val: ../RGBLid/images/val
 
-nc: 3
-
-names: ['Lid', 'Gate', 'Eryk']
+names:
+    0: Lid
+    1: Gate
+    2: Eryk
