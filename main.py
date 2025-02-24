@@ -1,3 +1,4 @@
+import cv2
 import torch
 from ultralytics import YOLO
 import matplotlib.pyplot as plt
@@ -21,11 +22,11 @@ def main():
     )
 
     # Run inference on a test image
-    results = model("camera_rgb-4886-27716661.png", save=True)
-
+    results = model("camera_rgb-4886-27716661.png", save=True, show=True)
+    
     # Save the final weights
     import shutil
-    shutil.copy("runs/detect/train/weights/best.pt", "LidTest.pt")
+    shutil.copy("runs/detect/train/weights/last.pt", "LidTest.pt")
 
 if __name__ == '__main__':
     main()
