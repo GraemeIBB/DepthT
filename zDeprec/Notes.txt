@@ -1,0 +1,13 @@
+Two methods of utilizing yolo for depth and RGBD
+
+- two cnns; one for rgb one for depth
+    - may be easier to implement; more computationally expensive
+
+
+Tangent:
+Instead of training with depth data, once possible object is found (like gate), check depth value for an array of pixels
+on each side of the gate such that the relative angle of the gate can be found
+
+
+Aim to capture at least rgb image stream over network from robot, can then apply yolo on that
+provide a downloadable package containing everything robot needs to run yolo locally

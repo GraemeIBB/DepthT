@@ -22,7 +22,7 @@ def main():
     )
 
     # Run inference on a test image
-    results = model("camera_rgb-4886-27716661.png", save=True, show=True)
+    # results = model("camera_rgb-4886-27716661.png", save=True, show=True)
     
     # Save the final weights
     import shutil
