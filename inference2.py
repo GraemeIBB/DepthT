@@ -68,7 +68,7 @@ class YOLOSegONNX:
 
     def postprocess(self, det, coefs, proto, orig_img,
                     scale, pad_x, pad_y,
-                    conf_thresh=0.25, mask_thresh=0.5, debug=False):
+                    conf_thresh=0.25, mask_thresh=0.5, debug=False, top_k=None):
 
         # det:   (1, N, 6) → [x1,y1,x2,y2,conf,cls]
         # coefs: (1, N, M)
@@ -95,6 +95,17 @@ class YOLOSegONNX:
             if len(det_filtered) > 0:
                 print(f"DEBUG: top 5 confidence scores: {sorted(det_filtered[:, 4], reverse=True)[:5]}")
                 print(f"DEBUG: class IDs found: {np.unique(det_filtered[:, 5].astype(int))}")
+
+        # Apply top-k filtering if specified
+        if top_k is not None and len(det_filtered) > top_k:
+            # Sort by confidence (descending) and keep top k
+            conf_indices = np.argsort(det_filtered[:, 4])[::-1][:top_k]
+            det_filtered = det_filtered[conf_indices]
+            coefs_filtered = coefs_filtered[conf_indices]
+            
+            if debug:
+                print(f"DEBUG: Keeping only top {top_k} most confident detections")
+                print(f"DEBUG: Top {top_k} confidence scores: {det_filtered[:, 4]}")
 
         # If no detections, return original image with debug info
         if len(det_filtered) == 0:
@@ -148,7 +159,7 @@ class YOLOSegONNX:
 
     def infer(self, img_path, img_size=640,
               conf_thresh=0.25, mask_thresh=0.5,
-              show=True, save_path=None, debug=False):
+              show=True, save_path=None, debug=False, top_k=None):
 
         inp, orig, scale, pad_x, pad_y = self.preprocess(img_path, img_size)
         
@@ -230,7 +241,7 @@ class YOLOSegONNX:
 
         result = self.postprocess(det, coefs, proto,
                                   orig, scale, pad_x, pad_y,
-                                  conf_thresh, mask_thresh, debug=debug)
+                                  conf_thresh, mask_thresh, debug=debug, top_k=top_k)
 
         if save_path:
             cv2.imwrite(save_path, result)
@@ -249,6 +260,7 @@ if __name__ == "__main__":
     parser.add_argument("--img-size",   type=int,   default=640)
     parser.add_argument("--conf-thresh",type=float, default=0.013)
     parser.add_argument("--mask-thresh",type=float, default=0.5)
+    parser.add_argument("--top-k",      type=int,   default=None, help="Show only top K most confident detections (e.g., 5)")
     parser.add_argument("--no-show",    action="store_true")
     parser.add_argument("--save",       help="Optional output path")
     parser.add_argument("--debug",      action="store_true", help="Enable debug output")
@@ -262,5 +274,6 @@ if __name__ == "__main__":
         mask_thresh = args.mask_thresh,
         show        = not args.no_show,
         save_path   = args.save,
-        debug       = args.debug
+        debug       = args.debug,
+        top_k       = args.top_k
     )

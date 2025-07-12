@@ -1,0 +1,11 @@
+# Requirements for YOLO training and ONNX export
+ultralytics>=8.0.0
+torch>=2.0.0
+torchvision>=0.15.0
+onnx>=1.12.0
+onnxruntime>=1.15.0
+opencv-python>=4.7.0
+numpy>=1.21.0
+pillow>=9.0.0
+matplotlib>=3.5.0
+pyyaml>=6.0
