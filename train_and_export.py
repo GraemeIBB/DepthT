@@ -170,7 +170,7 @@ def main():
                        help="Image size for training")
     parser.add_argument("--batch", type=int, default=16,
                        help="Batch size")
-    parser.add_argument("--device", default="auto",
+    parser.add_argument("--device", default="0",
                        help="Device to use (auto, cpu, 0, 1, etc.)")
     parser.add_argument("--patience", type=int, default=10,
                        help="Early stopping patience")

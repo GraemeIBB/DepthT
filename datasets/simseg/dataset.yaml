@@ -1,6 +1,6 @@
 # dataset.yaml
-train: C:/Users/graeme/DepthT/datasets/segmentation/images/train
-val: C:/Users/graeme/DepthT/datasets/segmentation/images/val
+train: C:/Users/graeme/DepthT/datasets/simseg/images/train
+val: C:/Users/graeme/DepthT/datasets/simseg/images/val
 
 nc: 1
 names: ["Gate"]
