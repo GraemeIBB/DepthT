@@ -44,5 +44,5 @@ def coco_to_yolo(json_path, output_dir):
                 f.write(yolo_line + '\n')
 
 # Example usage:
-coco_to_yolo('datasets/segmentation/labels_my-project-name_2025-07-02-12-14-31.json', 'yolo_labels')
+coco_to_yolo('datasets/simseg/1-30.json', 'datasets/simseg/labels/val')
 
