@@ -1,6 +1,6 @@
 # dataset.yaml
-train: images/train
-val: images/val
+train: C:/Users/graeme/DepthT/datasets/segmentation/images/train
+val: C:/Users/graeme/DepthT/datasets/segmentation/images/val
 
 nc: 1
 names: ["Gate"]
