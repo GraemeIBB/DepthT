@@ -141,10 +141,22 @@ class YOLOSegONNX:
             cv2.putText(out, label, (x1, y1-6),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
 
+            # # mask
+            # mask_logit = masks[i]
+            # mask = sigmoid(mask_logit)
+            # mask = cv2.resize(mask, (W0, int(H0)))
+            # bin_mask = (mask > mask_thresh).astype(np.uint8) * 255
             # mask
             mask_logit = masks[i]
             mask = sigmoid(mask_logit)
-            mask = cv2.resize(mask, (W0, H0))
+            # Apply the 1.333 ratio to height to correct for 480->640 scaling
+            corrected_height = int(H0 * 1.333)
+            mask = cv2.resize(mask, (W0, corrected_height))
+            # Center crop back to original height (480)
+            if corrected_height > H0:
+                start_y = (corrected_height - H0) // 2
+                end_y = start_y + H0
+                mask = mask[start_y:end_y, :]
             bin_mask = (mask > mask_thresh).astype(np.uint8) * 255
 
             # overlay green
@@ -258,7 +270,7 @@ if __name__ == "__main__":
     parser.add_argument("--model",      default="datasets/segmentation/runs/segment/train/weights/best.onnx", required=False, help="Path to yolov11n-seg.onnx")
     parser.add_argument("--image",      default="datasets/segmentation/images/val/camera_rgb21.png", required=False, help="Input image path")
     parser.add_argument("--img-size",   type=int,   default=640)
-    parser.add_argument("--conf-thresh",type=float, default=0.013)
+    parser.add_argument("--conf-thresh",type=float, default=0.5)
     parser.add_argument("--mask-thresh",type=float, default=0.5)
     parser.add_argument("--top-k",      type=int,   default=None, help="Show only top K most confident detections (e.g., 5)")
     parser.add_argument("--no-show",    action="store_true")
