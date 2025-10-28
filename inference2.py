@@ -26,13 +26,14 @@ class YOLOSegONNX:
         # Single-input name
         self.input_name = self.session.get_inputs()[0].name
 
-        # Branch: 3-output seg vs 2-output raw+proto
+        # Branch: 1-output, 2-output, or 3-output models
         if len(outs) == 3:
             # standard seg export: [det, coefs, proto]
             det3, coef3, proto3 = outs
             self.det_name   = det3.name
             self.coef_name  = coef3.name
             self.proto_name = proto3.name
+            self.mode_1out  = False
             self.mode_2out  = False
 
         elif len(outs) == 2:
@@ -42,10 +43,22 @@ class YOLOSegONNX:
             self.proto_name = proto.name
             self.det_name   = None
             self.coef_name  = None
+            self.mode_1out  = False
             self.mode_2out  = True
 
+        elif len(outs) == 1:
+            # single-output model: [combined_output]
+            combined = outs[0]
+            self.combined_name = combined.name
+            self.det_name   = None
+            self.coef_name  = None
+            self.raw_name   = None
+            self.proto_name = None
+            self.mode_1out  = True
+            self.mode_2out  = False
+
         else:
-            raise ValueError(f"Expected 2 or 3 outputs, got: {names_shapes}")
+            raise ValueError(f"Expected 1, 2 or 3 outputs, got: {names_shapes}")
 
     def preprocess(self, img_path, input_size=640):
         img0 = cv2.imread(img_path)
@@ -68,7 +81,7 @@ class YOLOSegONNX:
 
     def postprocess(self, det, coefs, proto, orig_img,
                     scale, pad_x, pad_y,
-                    conf_thresh=0.25, mask_thresh=0.5, debug=False, top_k=None):
+                    conf_thresh=0.25, mask_thresh=0.5, debug=False, top_k=None, single_output=False):
 
         # det:   (1, N, 6) → [x1,y1,x2,y2,conf,cls]
         # coefs: (1, N, M)
@@ -141,28 +154,39 @@ class YOLOSegONNX:
             cv2.putText(out, label, (x1, y1-6),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
 
-            # # mask
-            # mask_logit = masks[i]
-            # mask = sigmoid(mask_logit)
-            # mask = cv2.resize(mask, (W0, int(H0)))
-            # bin_mask = (mask > mask_thresh).astype(np.uint8) * 255
             # mask
             mask_logit = masks[i]
             mask = sigmoid(mask_logit)
-            # Apply the 1.333 ratio to height to correct for 480->640 scaling
-            corrected_height = int(H0 * 1.333)
-            mask = cv2.resize(mask, (W0, corrected_height))
-            # Center crop back to original height (480)
-            if corrected_height > H0:
-                start_y = (corrected_height - H0) // 2
-                end_y = start_y + H0
-                mask = mask[start_y:end_y, :]
-            bin_mask = (mask > mask_thresh).astype(np.uint8) * 255
+            
+            if single_output:
+                # For single output models, resize mask to bounding box size only
+                bbox_w = x2 - x1
+                bbox_h = y2 - y1
+                
+                if bbox_w > 0 and bbox_h > 0:
+                    mask = cv2.resize(mask, (bbox_w, bbox_h))
+                    bin_mask = (mask > mask_thresh).astype(np.uint8) * 255
+                    
+                    # Create mask overlay only within bounding box
+                    colored = np.zeros_like(out)
+                    colored[y1:y2, x1:x2, 1] = bin_mask
+                    out = cv2.addWeighted(out, 1.0, colored, 0.5, 0)
+            else:
+                # For multi-output models, use full image mask
+                # Apply the 1.333 ratio to height to correct for 480->640 scaling
+                corrected_height = int(H0 * 1.333)
+                mask = cv2.resize(mask, (W0, corrected_height))
+                # Center crop back to original height (480)
+                if corrected_height > H0:
+                    start_y = (corrected_height - H0) // 2
+                    end_y = start_y + H0
+                    mask = mask[start_y:end_y, :]
+                bin_mask = (mask > mask_thresh).astype(np.uint8) * 255
 
-            # overlay green
-            colored = np.zeros_like(out)
-            colored[:, :, 1] = bin_mask
-            out = cv2.addWeighted(out, 1.0, colored, 0.5, 0)
+                # overlay green
+                colored = np.zeros_like(out)
+                colored[:, :, 1] = bin_mask
+                out = cv2.addWeighted(out, 1.0, colored, 0.5, 0)
 
             if debug:
                 print(f"DEBUG: Detection {i+1}: bbox=({x1},{y1},{x2},{y2}), conf={conf:.4f}, class={int(cls)}")
@@ -183,7 +207,90 @@ class YOLOSegONNX:
         
         outs = self.session.run(None, {self.input_name: inp})
 
-        if self.mode_2out:
+        if self.mode_1out:
+            # SINGLE-output model: outs[0] = combined predictions [1, C, N]
+            combined_output = outs[0]
+            batch_size, C, N = combined_output.shape
+            
+            if debug:
+                print(f"DEBUG: Combined output shape: {combined_output.shape}")
+                print(f"DEBUG: C={C}, N={N}")
+            
+            # Transpose to [1, N, C] for easier processing
+            combined = combined_output.transpose(0, 2, 1)
+            
+            # For a shape like [1, 12, 8400], we have 12 channels per detection
+            # Typical YOLO format: [x, y, w, h, objectness, class_scores...]
+            # Since C=12, we likely have: 4 (bbox) + 1 (obj) + 7 (classes or other)
+            
+            # Split the channels
+            xywh = combined[..., :4]           # First 4: bbox
+            obj_conf = combined[..., 4:5]      # 5th: objectness
+            remaining = combined[..., 5:]      # Rest: likely class scores
+            
+            if debug:
+                print(f"DEBUG: xywh shape: {xywh.shape}")
+                print(f"DEBUG: obj_conf shape: {obj_conf.shape}")
+                print(f"DEBUG: remaining shape: {remaining.shape}")
+                print(f"DEBUG: obj_conf range: {obj_conf.min():.4f} - {obj_conf.max():.4f}")
+            
+            # For segmentation models, some channels might be mask coefficients
+            # Let's assume the last channels are mask coefficients and earlier ones are classes
+            # Common pattern: bbox(4) + obj(1) + classes(?) + mask_coeffs(?)
+            
+            # Try to infer: if we have 7 remaining channels, could be 1 class + 6 mask coeffs
+            # or could be 7 classes for detection only
+            if remaining.shape[-1] >= 6:
+                # Assume last 6 are mask coefficients, rest are classes
+                num_mask_coefs = 6
+                num_classes = remaining.shape[-1] - num_mask_coefs
+                
+                if num_classes > 0:
+                    cls_scores = remaining[..., :num_classes]
+                    mask_coefs = remaining[..., num_classes:]
+                    
+                    # Get best class
+                    cls_id = np.expand_dims(cls_scores.argmax(-1), axis=-1)
+                    cls_conf = np.expand_dims(cls_scores.max(-1), axis=-1)
+                    # Combine with objectness
+                    final_conf = obj_conf * cls_conf
+                else:
+                    # No explicit classes, use objectness
+                    cls_id = np.zeros_like(obj_conf)
+                    final_conf = obj_conf
+                    mask_coefs = remaining
+            else:
+                # Treat all remaining as mask coefficients
+                cls_id = np.zeros_like(obj_conf)
+                final_conf = obj_conf
+                mask_coefs = remaining
+            
+            if debug:
+                print(f"DEBUG: mask_coefs shape: {mask_coefs.shape}")
+                print(f"DEBUG: final_conf range: {final_conf.min():.4f} - {final_conf.max():.4f}")
+            
+            # Convert xywh to xyxy
+            xc, yc, w, h = xywh[...,0:1], xywh[...,1:2], xywh[...,2:3], xywh[...,3:4]
+            x1 = xc - w/2
+            y1 = yc - h/2
+            x2 = xc + w/2
+            y2 = yc + h/2
+            
+            # Create detection tensor [1, N, 6] - [x1, y1, x2, y2, conf, cls]
+            det = np.concatenate([x1, y1, x2, y2, final_conf, cls_id], axis=-1)
+            coefs = mask_coefs
+            
+            # Create dummy proto masks (since we don't have separate proto output)
+            # This is a limitation - single output models may not support segmentation
+            # or may encode masks differently
+            proto = np.ones((1, mask_coefs.shape[-1], 80, 80))  # Dummy proto masks
+            
+            if debug:
+                print(f"DEBUG: det shape: {det.shape}")
+                print(f"DEBUG: coefs shape: {coefs.shape}")
+                print(f"DEBUG: proto shape: {proto.shape}")
+
+        elif self.mode_2out:
             # TWO-output model: outs[0]=raw_preds (1,C,N), outs[1]=proto
             raw_preds, proto = outs
             _, C, N = raw_preds.shape
@@ -253,7 +360,7 @@ class YOLOSegONNX:
 
         result = self.postprocess(det, coefs, proto,
                                   orig, scale, pad_x, pad_y,
-                                  conf_thresh, mask_thresh, debug=debug, top_k=top_k)
+                                  conf_thresh, mask_thresh, debug=debug, top_k=top_k, single_output=self.mode_1out)
 
         if save_path:
             cv2.imwrite(save_path, result)
@@ -267,7 +374,7 @@ class YOLOSegONNX:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model",      default="datasets/segmentation/runs/segment/train/weights/best.onnx", required=False, help="Path to yolov11n-seg.onnx")
+    parser.add_argument("--model",      default="models/best.onnx", required=False, help="Path to yolov11n-seg.onnx")
     parser.add_argument("--image",      default="datasets/segmentation/images/val/camera_rgb21.png", required=False, help="Input image path")
     parser.add_argument("--img-size",   type=int,   default=640)
     parser.add_argument("--conf-thresh",type=float, default=0.5)

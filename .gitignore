@@ -26,6 +26,22 @@ Thumbs.db
 # Ignore runs directory
 runs/
 
+# Ignore model files
+*.pt
+*.onnx
+*.engine
+*.trt
+*.weights
+
+# Ignore output/result files
+result.jpg
+*.mp4
+*.avi
+
+# Ignore test images
+test*.png
+camera_*.jpg
+
 # Ignore other unimportant files
 *.bak
 *.swp

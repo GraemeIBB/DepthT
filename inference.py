@@ -414,7 +414,7 @@ class YOLOSegONNX:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="YOLO Segmentation with Image/Video/Webcam support")
-    parser.add_argument("--model", default="datasets/segmentation/runs/segment/train/weights/best.onnx", 
+    parser.add_argument("--model", default="models/best.onnx",
                        help="Path to ONNX model")
     parser.add_argument("--source", default="image", choices=["image", "video", "webcam"],
                        help="Source type: image, video, or webcam")

@@ -26,7 +26,7 @@ def main():
     
     # Save the final weights
     import shutil
-    shutil.copy("runs/detect/train/weights/last.pt", "LidTest.pt")
+    shutil.copy("runs/detect/train/weights/last.pt", "models/LidTest.pt")
 
 if __name__ == '__main__':
     main()
