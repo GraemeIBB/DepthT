@@ -26,9 +26,8 @@ Thumbs.db
 # Ignore runs directory
 runs/
 
-# Ignore model files
+# Ignore model files except for onnx da goat
 *.pt
-*.onnx
 *.engine
 *.trt
 *.weights
@@ -45,4 +44,5 @@ camera_*.jpg
 # Ignore other unimportant files
 *.bak
 *.swp
+
 *.swo
