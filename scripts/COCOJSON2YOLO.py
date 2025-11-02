@@ -44,5 +44,6 @@ def coco_to_yolo(json_path, output_dir):
                 f.write(yolo_line + '\n')
 
 # Example usage:
-coco_to_yolo('/home/graeme/DepthT/datasets/dropperseg/1.json', '/home/graeme/DepthT/datasets/dropperseg/labels')
+coco_to_yolo('<location of json>', '<location of labels>')
+
 
